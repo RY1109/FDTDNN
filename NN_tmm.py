@@ -12,7 +12,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from tensorflow.keras.layers import Dense, BatchNormalization, Activation
+from tensorflow.keras.layers import Dense, BatchNormalization, Activation ,Dropout,LeakyReLU
 from tensorflow.keras import Model
 
 
@@ -32,7 +32,7 @@ def huber_loss(labels, predictions, delta=1.0):
 def load_data(): 
     import scipy.io as sc
     import numpy as np
-    name = "./tmm/data/test.mat"
+    name = "./tmm/data/test_10layers"
     data = sc.loadmat(name)
     T = data['T']
     d = data['d']*0.001
@@ -45,16 +45,17 @@ np.random.seed(116)
 np.random.shuffle(label)
 
 data_num = np.size(train,0)
-test_input=train[:int(0.7*data_num),:]
-test_label=label[:int(0.7*data_num),:]
+train=train[:int(0.7*data_num),:]
+label=label[:int(0.7*data_num),:]
 
 
 
 
 
-class Baseline(Model):
+class Mybaseline(Model):
     def __init__(self):
-        super(Baseline, self).__init__()
+        
+        super(Mybaseline, self).__init__()
         self.c1 = Dense(40)  # 卷积层
         self.b1 = BatchNormalization()  # BN层
         self.a1 = Activation('relu')  # 激活层
@@ -81,14 +82,63 @@ class Baseline(Model):
         y = self.a2(x)
         return y
 
+class Zju(Model):
+    def __init__(self):
+        
+        super(Zju, self).__init__()
+        self.c1 = Dense(200)  # 卷积层
+        self.b1 = BatchNormalization()  # BN层
+        self.a1 = LeakyReLU()  # 激活层
+        self.c2 = Dense(800)  # 卷积层
+        self.b2 = BatchNormalization()  # BN层
+        self.a2 = LeakyReLU()  # 激活层
+        self.c3 = Dense(800)  # 卷积层
+        self.d3 = Dropout(0.1)
+        self.b3 = BatchNormalization()  # BN层
+        self.a3 = LeakyReLU()  # 激活层
+        self.c4 = Dense(800)  # 卷积层
+        self.d4 = Dropout(0.1)
+        self.b4 = BatchNormalization()  # BN层
+        self.a4 = LeakyReLU()  # 激活层
+        self.c5 = Dense(800)  # 卷积层
+        self.d5 = Dropout(0.1)        
+        self.b5 = BatchNormalization()  # BN层
+        self.a5 = LeakyReLU()  # 激活层
+        self.c6 = Dense(100)  # 卷积层
+        self.a6 = Activation('sigmoid')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
 
-model = Baseline()
+    def call(self, x):
+        x = self.c1(x)
+        x = self.b1(x)
+        x = self.a1(x)
+        x = self.c2(x)
+        x = self.b2(x)
+        x = self.a2(x)
+        x = self.c3(x)
+        x = self.d3(x)
+        x = self.b3(x)
+        x = self.a3(x)
+        x = self.c4(x)
+        x = self.d4(x)
+        x = self.b4(x)
+        x = self.a4(x)
+        x = self.c5(x)
+        x = self.d5(x)
+        x = self.b5(x)
+        x = self.a5(x)
+        x = self.c6(x)
+        y = self.a6(x)
+        return y
+    
+    
+model = Mybaseline()
 
-model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.01,decay=0.0001),
+model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001,decay=0.0001),
               loss='mse',
               metrics=['mse','mae'])
-
-checkpoint_save_path = "./checkpoint/Baseline_tmm/Baseline.ckpt"
+path = "./checkpoint/Baseline_mymodel_mydata/"
+checkpoint_save_path = path + "Baseline.ckpt"
+model_save_path = path + "Baseline.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
     print('-------------load the model-----------------')
     model.load_weights(checkpoint_save_path)
@@ -99,12 +149,13 @@ cp_callback = ([ tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_save_pat
                     tf.keras.callbacks.EarlyStopping(patience=100, min_delta=1e-4)
                    ])
 
-history = model.fit(train, label, batch_size=32, epochs=300, validation_split=0.2, validation_freq=1,
+history = model.fit(train, label, batch_size=2048, epochs=2000, validation_split=0.2, validation_freq=1,
                     callbacks=[cp_callback])
 model.summary()
+model.save(model_save_path)
 
 # print(model.trainable_variables)
-file = open('./checkpoint/Baseline_tmm/weights.txt', 'w')
+file = open(path + 'weights.txt', 'w')
 for v in model.trainable_variables:
     file.write(str(v.name) + '\n')
     file.write(str(v.shape) + '\n')

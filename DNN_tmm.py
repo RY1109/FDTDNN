@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from tensorflow.keras.layers import Dense, BatchNormalization, Activation
+from tensorflow.keras.layers import Dense, BatchNormalization, Activation ,LeakyReLU ,Dropout
 from tensorflow.keras import Model
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -37,7 +37,6 @@ def Diy_loss(labels, predictions,P,
              delta=0.01,betar=0.1):
     mse = tf.reduce_mean(tf.square(labels-predictions))
     l = tf.constant(np.array([[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]),dtype='float32')
-    m = tf.constant(np.array([[0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2]]),dtype='float32')
     u = tf.constant(np.array([[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3]]),dtype='float32')
     regu = tf.maximum(tf.add(P, tf.add(-u, delta)), 
                       tf.maximum(tf.add(-P, tf.add(l, delta)),
@@ -45,12 +44,7 @@ def Diy_loss(labels, predictions,P,
     loss = betar*(tf.reduce_mean(regu))+mse   
     return loss
     
-    # def huber_loss(labels, predictions, delta=1.0):
-    # residual = tf.abs(predictions - labels)
-    # condition = tf.less(residual, delta)
-    # small_res = 0.5 * tf.square(residual)
-    # large_res = delta * residual - 0.5 * tf.square(delta)
-    # return tf.where(condition, small_res, large_res)
+
 
 def Diy_loss2(labels, predictions,P,
              delta=0.01,betar=0.01):
@@ -66,27 +60,16 @@ def Diy_loss2(labels, predictions,P,
     loss = betar*(tf.reduce_mean(regu))+mse   
     return loss
 
-
-
-
-
-
-
-
-
-
-
     
-class Baseline(Model):
+class Mybaseline(Model):
     def __init__(self):
-        super(Baseline, self).__init__()
+        super(Mybaseline, self).__init__()
         self.c1 = Dense(40)  # 卷积层
         self.b1 = BatchNormalization()  # BN层
         self.a1 = Activation('relu')  # 激活层
         self.c3 = Dense(80)  # 卷积层
         self.b3 = BatchNormalization()  # BN层
         self.a3 = Activation('relu')  # 激活层
-        # self.p1 = MaxPool2D(pool_size=(2, 2), strides=2, padding='same')  # 池化层
         self.c2 = Dense(100)  # 卷积层
         self.b2 = BatchNormalization()  # BN层
         self.a2 = Activation(None)  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
@@ -106,7 +89,54 @@ class Baseline(Model):
         y = self.a2(x)
         return y
 
-    
+class Zju(Model):
+    def __init__(self):
+        
+        super(Zju, self).__init__()
+        self.c1 = Dense(200)  # 卷积层
+        self.b1 = BatchNormalization()  # BN层
+        self.a1 = LeakyReLU()  # 激活层
+        self.c2 = Dense(800)  # 卷积层
+        self.b2 = BatchNormalization()  # BN层
+        self.a2 = LeakyReLU()  # 激活层
+        self.c3 = Dense(800)  # 卷积层
+        self.d3 = Dropout(0.1)
+        self.b3 = BatchNormalization()  # BN层
+        self.a3 = LeakyReLU()  # 激活层
+        self.c4 = Dense(800)  # 卷积层
+        self.d4 = Dropout(0.1)
+        self.b4 = BatchNormalization()  # BN层
+        self.a4 = LeakyReLU()  # 激活层
+        self.c5 = Dense(800)  # 卷积层
+        self.d5 = Dropout(0.1)        
+        self.b5 = BatchNormalization()  # BN层
+        self.a5 = LeakyReLU()  # 激活层
+        self.c6 = Dense(100)  # 卷积层
+        self.a6 = Activation('sigmoid')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
+
+    def call(self, x):
+        x = self.c1(x)
+        x = self.b1(x)
+        x = self.a1(x)
+        x = self.c2(x)
+        x = self.b2(x)
+        x = self.a2(x)
+        x = self.c3(x)
+        x = self.d3(x)
+        x = self.b3(x)
+        x = self.a3(x)
+        x = self.c4(x)
+        x = self.d4(x)
+        x = self.b4(x)
+        x = self.a4(x)
+        x = self.c5(x)
+        x = self.d5(x)
+        x = self.b5(x)
+        x = self.a5(x)
+        x = self.c6(x)
+        y = self.a6(x)
+        return y
+     
     
 class MyModel(Model):
     def __init__(self):
@@ -116,35 +146,14 @@ class MyModel(Model):
         )
         self.d1 = Dense(10,
                           kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
-        # self.b1 = BatchNormalization()  # BN层
         self.a1 = Activation('relu')  # 激活层
-        # self.d2 = Dense(100,
-        #                  kernel_regularizer=tf.keras.regularizers.l2(0))  # 卷积层
-        # self.b2 = BatchNormalization()  # BN层
-        # self.a2 = Activation('relu')  # 激活层
-        # self.d4 = Dense(100,
-        #                  kernel_regularizer=tf.keras.regularizers.l2(0))  # 卷积层
-        # self.b4 = BatchNormalization()  # BN层
-        # self.a4 = Activation('relu')  # 激活层
-        # self.d3 = Dense(500,
-        #                  kernel_regularizer=tf.keras.regularizers.l2(0))  # 卷积层
-        # self.b3 = BatchNormalization()  # BN层
-        # self.a3 = Activation('relu')  # 激活层
-        # self.d4 = Dense(100,
-        #                  kernel_regularizer=tf.keras.regularizers.l2(0))  # 卷积层
-        # self.b4 = BatchNormalization()  # BN层
-        # self.a4 = Activation('relu')  # 激活层
-        # self.p1 = MaxPool2D(pool_size=(2, 2), strides=2, padding='same')  # 池化层
         self.d5 = Dense(89,name='d2')  # 卷积层
-        # self.b5 = BatchNormalization()  # BN层
         self.a5 = Activation(None)  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
-        self.model = Baseline()
-
+        self.model = Zju()
         self.model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001),
               loss='mse',
               metrics=['me','mae'])
-
-        self.checkpoint_save_path = "./checkpoint/Baseline_tmm/Baseline.ckpt"
+        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata/Baseline.ckpt"
         self.model.load_weights(self.checkpoint_save_path)
     def call(self, x):
         W = self.model(self.P)[:,:89]
@@ -152,26 +161,16 @@ class MyModel(Model):
         x = tf.matmul(W,x)
         x = tf.transpose(x) 
         x = self.d1(x)
-        # x = self.b1(x)
         x = self.a1(x)
-        # x = self.d2(x)
-        # x = self.b2(x)
-        # x = self.a2(x)
-        # x = self.d3(x)
-        # x = self.b3(x)
-        # x = self.a3(x)
-        # x = self.d4(x)
-        # x = self.b4(x)
-        # x = self.a4(x)
-        # x = self.p1(x)
-        # x = self.d1(x)
         x = self.d5(x)
-        # x = self.b5(x)
         y = self.a5(x)
         return y
+
     
 model = MyModel()
-checkpoint_save_path='./checkpoint/DNN_tmm/checkpoint.ckpt'
+path = "./checkpoint/DNN_zjubaseline_mymodel/"
+checkpoint_save_path = path + "checkpoint.ckpt"
+model_save_path = path + "checkpoint.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
     print('-------------load the model-----------------')
     model.load_weights(checkpoint_save_path).expect_partial()
@@ -245,13 +244,14 @@ for epoch in range(EPOCHS):
                          test_accuracy.result()))
 model.summary()
 # print(model.trainable_variables)
-file = open('./checkpoint/DNN_tmm/weights.txt', 'w')
+file = open('path'+'weights.txt', 'w')
 for v in model.trainable_variables:
     file.write(str(v.name) + '\n')
     file.write(str(v.shape) + '\n')
     file.write(str(v.numpy()) + '\n')
 file.close()
-model.save_weights('./checkpoint/DNN_tmm/checkpoint')   
+model.save_weights(checkpoint_save_path)  
+model.save(model_save_path) 
 
 
 
