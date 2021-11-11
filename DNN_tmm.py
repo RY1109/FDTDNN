@@ -9,7 +9,6 @@ import tensorflow.compat.v1.keras.backend as K
 import tensorflow as tf
 tf.compat.v1.enable_eager_execution()
 tf.autograph.experimental.do_not_convert
-# tf.compat.v1.disable_eager_execution()
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import numpy as np
@@ -17,8 +16,15 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from tensorflow.keras.layers import Dense, BatchNormalization, Activation ,LeakyReLU ,Dropout
 from tensorflow.keras import Model
-from matplotlib import pyplot as plt
 from tqdm import tqdm
+import tensorflow as tf
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+tf.autograph.experimental.do_not_convert
+tf.keras.backend.set_floatx('float32')
+np.set_printoptions(threshold=np.inf)
+
+
 
 def load_data(): 
     import scipy.io as sc
@@ -34,7 +40,7 @@ def load_data():
 
 
 def Diy_loss(labels, predictions,P,
-             delta=0.01,betar=0.1):
+             delta=0.01,betar=1e-3):
     mse = tf.reduce_mean(tf.square(labels-predictions))
     l = tf.constant(np.array([[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]),dtype='float32')
     u = tf.constant(np.array([[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3]]),dtype='float32')
@@ -47,7 +53,7 @@ def Diy_loss(labels, predictions,P,
 
 
 def Diy_loss2(labels, predictions,P,
-             delta=0.01,betar=0.01):
+             delta=0.01,betar=0.001):
     mse = tf.reduce_mean(tf.square(labels-predictions))
     l = tf.constant(np.array([[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]),dtype='float32')
     m = tf.constant(np.array([[0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2]]),dtype='float32')
@@ -89,10 +95,10 @@ class Mybaseline(Model):
         y = self.a2(x)
         return y
 
-class Zju(Model):
+class Zjubaseline(Model):
     def __init__(self):
         
-        super(Zju, self).__init__()
+        super(Zjubaseline, self).__init__()
         self.c1 = Dense(200)  # 卷积层
         self.b1 = BatchNormalization()  # BN层
         self.a1 = LeakyReLU()  # 激活层
@@ -149,12 +155,14 @@ class MyModel(Model):
         self.a1 = Activation('relu')  # 激活层
         self.d5 = Dense(89,name='d2')  # 卷积层
         self.a5 = Activation(None)  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
-        self.model = Zju()
+        self.model = Mybaseline()
         self.model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001),
               loss='mse',
               metrics=['me','mae'])
         self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata/Baseline.ckpt"
         self.model.load_weights(self.checkpoint_save_path)
+        for layer in model.layers:
+            layer.trainable = False
     def call(self, x):
         W = self.model(self.P)[:,:89]
         x = tf.transpose(x) 
@@ -165,10 +173,47 @@ class MyModel(Model):
         x = self.d5(x)
         y = self.a5(x)
         return y
-
     
-model = MyModel()
-path = "./checkpoint/DNN_zjubaseline_mymodel/"
+    
+class ZjuModel(Model):
+    def __init__(self):
+        super(ZjuModel, self).__init__()
+        self.P = self.add_weight(
+            shape=(16, 10), initializer="random_normal", trainable=True,name='P'
+        )
+        # self.a0 = LeakyReLU(name='a0')
+        self.d1 = Dense(500,
+                          kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
+        self.a1 = LeakyReLU(name='a1')  # 激活层
+        self.d2 = Dense(500,
+                          kernel_regularizer=tf.keras.regularizers.l2(0),name='d2')  # 卷积层
+        self.a2 = LeakyReLU(name='a2')  # 激活层
+        self.d3 = Dense(89,name='d3')  # 卷积层
+        self.a3 = LeakyReLU(name='a3')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
+        self.model = Zjubaseline()
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001,decay=0.0001),
+              loss='mse',
+              metrics=['me','mae'])
+        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata/Baseline.ckpt"
+        self.model.load_weights(self.checkpoint_save_path)
+        for layer in self.model.layers:
+            layer.trainable = False
+    def call(self, x):
+        W = self.model(self.P)[:,:89]
+        x = tf.transpose(x) 
+        x = tf.matmul(W,x)
+        x = tf.transpose(x) 
+        # x = self.a0(x)
+        x = self.d1(x)
+        x = self.a1(x)
+        x = self.d2(x)
+        y = self.a2(x)
+        x = self.d3(x)
+        y = self.a3(x)
+        return y
+    
+model = ZjuModel()
+path = "./checkpoint/DNN_zjubaseline_zjumodel/"
 checkpoint_save_path = path + "checkpoint.ckpt"
 model_save_path = path + "checkpoint.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -177,7 +222,7 @@ if os.path.exists(checkpoint_save_path + '.index'):
 
   
 # loss_object =    tf.keras.losses.MeanSquaredError()
-optimizer = tf.keras.optimizers.Adam(lr = 0.001)
+optimizer = tf.keras.optimizers.Adam(lr = 1e-4,decay=0.001)
 
 train_loss = tf.keras.metrics.MeanSquaredError(name='train_loss')
 train_accuracy = tf.keras.metrics.MeanSquaredError(name='train_accuracy')
@@ -209,11 +254,11 @@ def test_step(tes):
   test_loss(tes,predictions)
   test_accuracy(tes, predictions)
 
-EPOCHS = 5
+EPOCHS = 100
 ltr = len(train)
 lte = len(test)
-batch_size=32
-
+batch_size=2000
+loss = np.zeros([4,EPOCHS])
 
 for epoch in range(EPOCHS):
   # 在下一个epoch开始时，重置评估指标
@@ -224,14 +269,14 @@ for epoch in range(EPOCHS):
 
   for index in range(0,ltr,batch_size):
     tra = train[index:(index+batch_size),:]
-    if len(tra)<32:
+    if len(tra)<batch_size:
         break
     tra=tf.constant(tra.reshape([batch_size,89]),dtype='float32')
     train_step(tra)
 
   for index in range(0,lte,batch_size):
     tes = test[index:(index+batch_size),:]
-    if len(tes)<32:
+    if len(tes)<batch_size:
         break
     tes=tf.constant(tes.reshape([batch_size,89]),dtype='float32')
     test_step(tes)
@@ -242,9 +287,15 @@ for epoch in range(EPOCHS):
                          train_accuracy.result(),
                          test_loss.result(),
                          test_accuracy.result()))
+  
+  loss[0,epoch]=train_loss.result().numpy()
+  loss[1,epoch]=train_accuracy.result().numpy()
+  loss[2,epoch]=test_loss.result().numpy()
+  loss[3,epoch]=test_accuracy.result().numpy()
+  
 model.summary()
 # print(model.trainable_variables)
-file = open('path'+'weights.txt', 'w')
+file = open(path+'weights.txt', 'w')
 for v in model.trainable_variables:
     file.write(str(v.name) + '\n')
     file.write(str(v.shape) + '\n')
@@ -254,74 +305,21 @@ model.save_weights(checkpoint_save_path)
 model.save(model_save_path) 
 
 
+def plot_history(loss):
+   
+  plt.figure()
+  plt.xlabel('Epoch')
+  plt.ylabel('Mean Square Error [$MPG^2$]')
+  plt.plot(np.array(range(EPOCHS)), loss[0,:],
+           label='Train Error')
+  plt.plot(np.array(range(EPOCHS)), loss[2,:],
+           label='Val Error')
+  plt.legend()
+  plt.show()
 
 
+plot_history(loss)
 
-
-
-
-
-# model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001),
-#               loss='mse',
-#               metrics=['mse','mae'])
-
-# checkpoint_save_path = "./checkpoint/DNN/Mymodel.ckpt"
-# if os.path.exists(checkpoint_save_path + '.index'):
-#     print('-------------load the model-----------------')
-#     model.load_weights(checkpoint_save_path)
-
-# cp_callback = ([ tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_save_path,
-#                                                           save_weights_only=True,
-#                                                       save_best_only=True),
-#                 tf.keras.callbacks.EarlyStopping(patience=4, min_delta=1e-4)
-#                    ])
-
-# history = model.fit(train, train, batch_size=32, epochs=100, 
-#                     validation_data=[test,test], validation_freq=1,
-#                     callbacks=[cp_callback])
-# # model.summary()
-
-# # print(model.trainable_variables)
-# # file = open('./checkpoint/DNN/weights.txt', 'w')
-# # for v in model.trainable_variables:
-# #     file.write(str(v.name) + '\n')
-# #     file.write(str(v.shape) + '\n')
-# #     file.write(str(v.numpy()) + '\n')
-# # file.close()
-
-# ###############################################    show   ###############################################
-
-# # 显示训练集和验证集的acc和loss曲线
-# def plot_history(history):
-#   hist = pd.DataFrame(history.history)
-#   hist['epoch'] = history.epoch
-
-#   plt.figure()
-#   plt.xlabel('Epoch')
-#   plt.ylabel('Mean Abs Error [MPG]')
-#   plt.plot(hist['epoch'], hist['mae'],
-#             label='Train Error')
-#   plt.plot(hist['epoch'], hist['val_mae'],
-#             label = 'Val Error')
-#   plt.legend()
-
-#   plt.figure()
-#   plt.xlabel('Epoch')
-#   plt.ylabel('Mean Square Error [$MPG^2$]')
-#   plt.plot(hist['epoch'], hist['mse'],
-#             label='Train Error')
-#   plt.plot(hist['epoch'], hist['val_mse'],
-#             label = 'Val Error')
-#   plt.legend()
-#   plt.show()
-
-
-# plot_history(history)
-
-
-
-
-# loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
 
 
 

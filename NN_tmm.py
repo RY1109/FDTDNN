@@ -8,17 +8,19 @@ Created on Tue Oct 12 15:13:19 2021
 
 import tensorflow as tf
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from tensorflow.keras.layers import Dense, BatchNormalization, Activation ,Dropout,LeakyReLU
 from tensorflow.keras import Model
-
-
-
-
+tf.autograph.experimental.do_not_convert
+tf.keras.backend.set_floatx('float32')
 np.set_printoptions(threshold=np.inf)
+
+
+
+
 def huber_loss(labels, predictions, delta=1.0):
     residual = tf.abs(predictions - labels)
     condition = tf.less(residual, delta)
@@ -32,7 +34,7 @@ def huber_loss(labels, predictions, delta=1.0):
 def load_data(): 
     import scipy.io as sc
     import numpy as np
-    name = "./tmm/data/test_10layers"
+    name = "./mytmm/data/test_10layers"
     data = sc.loadmat(name)
     T = data['T']
     d = data['d']*0.001
@@ -131,12 +133,12 @@ class Zju(Model):
         return y
     
     
-model = Mybaseline()
+model = Zju()
 
 model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001,decay=0.0001),
               loss='mse',
               metrics=['mse','mae'])
-path = "./checkpoint/Baseline_mymodel_mydata/"
+path = "./checkpoint/Baseline_zjumodel_mydata/"
 checkpoint_save_path = path + "Baseline.ckpt"
 model_save_path = path + "Baseline.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
