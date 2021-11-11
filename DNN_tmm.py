@@ -5,20 +5,17 @@ Created on Tue Oct 12 15:38:09 2021
 @author: a
 """
 
-import tensorflow.compat.v1.keras.backend as K
 import tensorflow as tf
 tf.compat.v1.enable_eager_execution()
 tf.autograph.experimental.do_not_convert
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import numpy as np
-import pandas as pd
 from matplotlib import pyplot as plt
 from tensorflow.keras.layers import Dense, BatchNormalization, Activation ,LeakyReLU ,Dropout
 from tensorflow.keras import Model
-from tqdm import tqdm
 import tensorflow as tf
-import os
+import scipy.io as sc
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 tf.autograph.experimental.do_not_convert
 tf.keras.backend.set_floatx('float32')
@@ -26,15 +23,20 @@ np.set_printoptions(threshold=np.inf)
 
 
 
-def load_data(): 
+def load_data(size): 
     import scipy.io as sc
-    name = "./balloons_ms/balloons_train"
-    data = sc.loadmat(name)
-    train = data['train']
-    # train = (train - np.min(train))/ (np.max(train)-np.min(train))
-    name = "./balloons_ms/balloons_test"
-    data = sc.loadmat(name)
-    test = data['test']
+    train_path = "./balloons_ms/train"
+    test_path = "./balloons_ms/test"
+    train_name = os.listdir(train_path)
+    test_name = os.listdir(test_path)
+    train = np.zeros([157286*size,89])
+    test = np.zeros([78644*size,89])
+    for i in range(size):   
+        data = sc.loadmat(train_path+'/'+train_name[i])
+        train[i*157286:(i+1)*157286,:] = data['train']
+        # train = (train - np.min(train))/ (np.max(train)-np.min(train))
+        data = sc.loadmat(test_path+'/'+test_name[i])
+        test[i*78644:(i+1)*78644,:] = data['test']
     # test = (test - np.min(test))/ (np.max(test)-np.min(test))
     return [train,test]
 
@@ -211,9 +213,10 @@ class ZjuModel(Model):
         x = self.d3(x)
         y = self.a3(x)
         return y
-    
+
+size = 10    
 model = ZjuModel()
-path = "./checkpoint/DNN_zjubaseline_zjumodel/"
+path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets/"
 checkpoint_save_path = path + "checkpoint.ckpt"
 model_save_path = path + "checkpoint.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -231,7 +234,7 @@ test_loss = tf.keras.metrics.MeanSquaredError(name='test_loss')
 test_accuracy = tf.keras.metrics.MeanSquaredError(name='test_accuracy')
 
 
-[train,test] = load_data()   
+[train,test] = load_data(size)   
 # train = train[:500,:]
 # test = test[:500,:]
 
@@ -254,7 +257,7 @@ def test_step(tes):
   test_loss(tes,predictions)
   test_accuracy(tes, predictions)
 
-EPOCHS = 100
+EPOCHS = 1
 ltr = len(train)
 lte = len(test)
 batch_size=2000
@@ -303,7 +306,8 @@ for v in model.trainable_variables:
 file.close()
 model.save_weights(checkpoint_save_path)  
 model.save(model_save_path) 
-
+test_input = model.P.numpy()
+sc.savemat(path+'para.mat',{'paraments':test_input})
 
 def plot_history(loss):
    

@@ -25,13 +25,17 @@ tf.autograph.experimental.do_not_convert
 tf.keras.backend.set_floatx('float32')
 np.set_printoptions(threshold=np.inf)
 
-def load_data():
-    import scipy.io as sc
-    name = "./balloons_ms/balloons_val"
-    data = sc.loadmat(name)
-    val = data['val']
-    return val
 
+def load_data(size): 
+    import scipy.io as sc
+    val_path = "./balloons_ms/val"
+    val_name = os.listdir(val_path)
+    val = np.zeros([26215*size,89])
+    for i in range(size):   
+        data = sc.loadmat(val_path+'/'+val_name[i])
+        val[i*26215:(i+1)*26215,:] = data['val']
+    # test = (test - np.min(test))/ (np.max(test)-np.min(test))
+    return val
 class ZjuModel(Model):
     def __init__(self):
         super(ZjuModel, self).__init__()
@@ -52,13 +56,20 @@ class ZjuModel(Model):
         x = self.d3(x)
         y = self.a3(x)
         return y
-  
-para = sc.loadmat('./result/data/filters16/para.mat')
+
+
+size = 10  
+path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets/"
+checkpoint_save_path = path + "checkpoint.ckpt"
+para = sc.loadmat(path+'para.mat')
 para = para['paraments']
 d_list = [inf, 100,200,100,200,100,200, 200,200,200,200,inf]
 ran = np.array(range(16)) 
 T_array = np.ones([16,89])
-val=load_data()   
+val=load_data(size)   
+model = ZjuModel()
+
+
 
 for i in tqdm(ran):
     lambda_lis  = np.array(range(100))*4+400
@@ -71,9 +82,6 @@ for i in tqdm(ran):
     T_array[i,:] = np.array(T_list).reshape([1,89])
 
 test_input = np.matmul(val, T_array.T)
-model = ZjuModel()
-path = "./checkpoint/DNN_zjubaseline_zjumodel/"
-checkpoint_save_path = path + "checkpoint.ckpt"
 
 model.load_weights(checkpoint_save_path)
 predict = model.predict(test_input)
@@ -89,6 +97,6 @@ for i in tqdm(ran):
     result_.plot(np.array(range(89)).reshape(89,1),val[i,:],label='True')
     result_.legend()
     result_.imshow
-    result.savefig('./result/figure/ballons_DNN/'+str(i))
+    # result.savefig('./result/figure/ballons_DNN/'+str(i))
 
 
