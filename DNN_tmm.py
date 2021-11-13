@@ -44,7 +44,7 @@ def load_data(size):
 def Diy_loss(labels, predictions,P,
              delta=0.01,betar=1e-3):
     mse = tf.reduce_mean(tf.square(labels-predictions))
-    l = tf.constant(np.array([[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]),dtype='float32')
+    l = tf.constant(np.array([[0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2]]),dtype='float32')
     u = tf.constant(np.array([[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3]]),dtype='float32')
     regu = tf.maximum(tf.add(P, tf.add(-u, delta)), 
                       tf.maximum(tf.add(-P, tf.add(l, delta)),
@@ -161,7 +161,7 @@ class MyModel(Model):
         self.model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001),
               loss='mse',
               metrics=['me','mae'])
-        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata/Baseline.ckpt"
+        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata_/Baseline.ckpt"
         self.model.load_weights(self.checkpoint_save_path)
         for layer in model.layers:
             layer.trainable = False
@@ -216,7 +216,7 @@ class ZjuModel(Model):
 
 size = 10    
 model = ZjuModel()
-path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets/"
+path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets_/"
 checkpoint_save_path = path + "checkpoint.ckpt"
 model_save_path = path + "checkpoint.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -225,7 +225,9 @@ if os.path.exists(checkpoint_save_path + '.index'):
 
   
 # loss_object =    tf.keras.losses.MeanSquaredError()
-optimizer = tf.keras.optimizers.Adam(lr = 1e-4,decay=0.001)
+exponential_decay = tf.keras.optimizers.schedules.ExponentialDecay(
+                        initial_learning_rate=0.0001, decay_steps=50*2048, decay_rate=0.8,staircase=True)
+optimizer = tf.keras.optimizers.Adam(exponential_decay)
 
 train_loss = tf.keras.metrics.MeanSquaredError(name='train_loss')
 train_accuracy = tf.keras.metrics.MeanSquaredError(name='train_accuracy')
@@ -257,10 +259,10 @@ def test_step(tes):
   test_loss(tes,predictions)
   test_accuracy(tes, predictions)
 
-EPOCHS = 1
+EPOCHS = 500
 ltr = len(train)
 lte = len(test)
-batch_size=2000
+batch_size=2048
 loss = np.zeros([4,EPOCHS])
 
 for epoch in range(EPOCHS):

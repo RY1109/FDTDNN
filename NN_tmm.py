@@ -117,15 +117,15 @@ class Zju(Model):
         x = self.b2(x)
         x = self.a2(x)
         x = self.c3(x)
-        x = self.d3(x)
+        # x = self.d3(x)
         x = self.b3(x)
         x = self.a3(x)
         x = self.c4(x)
-        x = self.d4(x)
+        # x = self.d4(x)
         x = self.b4(x)
         x = self.a4(x)
         x = self.c5(x)
-        x = self.d5(x)
+        # x = self.d5(x)
         x = self.b5(x)
         x = self.a5(x)
         x = self.c6(x)
@@ -134,11 +134,12 @@ class Zju(Model):
     
     
 model = Zju()
-
-model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001,decay=0.0001),
+exponential_decay = tf.keras.optimizers.schedules.ExponentialDecay(
+                        initial_learning_rate=0.001, decay_steps=200, decay_rate=0.96,staircase=True)
+model.compile(optimizer=tf.keras.optimizers.Adam(exponential_decay),
               loss='mse',
               metrics=['mse','mae'])
-path = "./checkpoint/Baseline_zjumodel_mydata/"
+path = "./checkpoint/Baseline_zjumodel_mydata____/"
 checkpoint_save_path = path + "Baseline.ckpt"
 model_save_path = path + "Baseline.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -148,10 +149,10 @@ if os.path.exists(checkpoint_save_path + '.index'):
 cp_callback = ([ tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_save_path,
                                                           save_weights_only=True,
                                                           save_best_only=True),
-                    tf.keras.callbacks.EarlyStopping(patience=100, min_delta=1e-4)
+                    tf.keras.callbacks.EarlyStopping(patience=2000, min_delta=1e-5)
                    ])
 
-history = model.fit(train, label, batch_size=2048, epochs=2000, validation_split=0.2, validation_freq=1,
+history = model.fit(train, label, batch_size=1024, epochs=2000, validation_split=0.2, validation_freq=1,
                     callbacks=[cp_callback])
 model.summary()
 model.save(model_save_path)

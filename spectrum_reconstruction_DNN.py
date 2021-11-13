@@ -59,7 +59,7 @@ class ZjuModel(Model):
 
 
 size = 10  
-path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets/"
+path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets_/"
 checkpoint_save_path = path + "checkpoint.ckpt"
 para = sc.loadmat(path+'para.mat')
 para = para['paraments']
@@ -89,7 +89,7 @@ predict = model.predict(test_input)
 
 result = plt.figure() ##像素点光谱
 result_ = result.add_subplot(1,1,1)
-ran = np.array(range(200)) 
+ran = np.array(range(20)) 
 for i in tqdm(ran):
     result = plt.figure() ##像素点光谱
     result_ = result.add_subplot(1,1,1)
