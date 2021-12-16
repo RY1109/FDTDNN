@@ -34,25 +34,24 @@ def huber_loss(labels, predictions, delta=1.0):
 def load_data(): 
     import scipy.io as sc
     import numpy as np
-    name = "./mytmm/data/test_10layers"
+    name = "./mytmm/data/data_TF_100-300nm"
     data = sc.loadmat(name)
-    T = data['T']
-    d = data['d']*0.001
+    T = data['Trans_train'].T
+    d = data['Thick_train'].T*0.001
     return [d,T]
-[train,label] = load_data()   
 
-np.random.seed(116)
-np.random.shuffle(train)
-np.random.seed(116)
-np.random.shuffle(label)
-
+[train,label] = load_data()
 data_num = np.size(train,0)
 train=train[:int(0.7*data_num),:]
 label=label[:int(0.7*data_num),:]
+dataset = tf.data.Dataset.from_tensor_slices((train, label))
+train = dataset.take(int(0.6*data_num))
+val = dataset.skip(int(0.6*data_num))
 
-
-
-
+BATCH_SIZE = 2048
+SHUFFLE_BUFFER_SIZE = 100
+train = train.shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+val = val.shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 class Mybaseline(Model):
     def __init__(self):
@@ -89,24 +88,24 @@ class Zju(Model):
         
         super(Zju, self).__init__()
         self.c1 = Dense(200)  # 卷积层
-        self.b1 = BatchNormalization()  # BN层
-        self.a1 = LeakyReLU()  # 激活层
+        self.b1 = BatchNormalization(momentum=0.1,epsilon=1e-5)  # BN层
+        self.a1 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c2 = Dense(800)  # 卷积层
-        self.b2 = BatchNormalization()  # BN层
-        self.a2 = LeakyReLU()  # 激活层
+        self.b2 = BatchNormalization(momentum=0.1,epsilon=1e-5)  # BN层
+        self.a2 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c3 = Dense(800)  # 卷积层
         self.d3 = Dropout(0.1)
-        self.b3 = BatchNormalization()  # BN层
-        self.a3 = LeakyReLU()  # 激活层
+        self.b3 = BatchNormalization(momentum=0.1,epsilon=1e-5)  # BN层
+        self.a3 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c4 = Dense(800)  # 卷积层
         self.d4 = Dropout(0.1)
-        self.b4 = BatchNormalization()  # BN层
-        self.a4 = LeakyReLU()  # 激活层
+        self.b4 = BatchNormalization(momentum=0.1,epsilon=1e-5)  # BN层
+        self.a4 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c5 = Dense(800)  # 卷积层
-        self.d5 = Dropout(0.1)        
-        self.b5 = BatchNormalization()  # BN层
-        self.a5 = LeakyReLU()  # 激活层
-        self.c6 = Dense(100)  # 卷积层
+        self.d5 = Dropout(0.1)
+        self.b5 = BatchNormalization(momentum=0.1,epsilon=1e-5)  # BN层
+        self.a5 = LeakyReLU(alpha=1e-2)  # 激活层
+        self.c6 = Dense(201)  # 卷积层
         self.a6 = Activation('sigmoid')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
 
     def call(self, x):
@@ -117,29 +116,29 @@ class Zju(Model):
         x = self.b2(x)
         x = self.a2(x)
         x = self.c3(x)
-        # x = self.d3(x)
+        x = self.d3(x)
         x = self.b3(x)
         x = self.a3(x)
         x = self.c4(x)
-        # x = self.d4(x)
+        x = self.d4(x)
         x = self.b4(x)
         x = self.a4(x)
         x = self.c5(x)
-        # x = self.d5(x)
+        x = self.d5(x)
         x = self.b5(x)
         x = self.a5(x)
         x = self.c6(x)
         y = self.a6(x)
-        return y
+        return x
     
     
 model = Zju()
 exponential_decay = tf.keras.optimizers.schedules.ExponentialDecay(
-                        initial_learning_rate=0.001, decay_steps=200, decay_rate=0.96,staircase=True)
-model.compile(optimizer=tf.keras.optimizers.Adam(exponential_decay),
-              loss='mse',
+                        initial_learning_rate=0.001, decay_steps=200*2048, decay_rate=0.8,staircase=True)
+model.compile(optimizer=tf.keras.optimizers.Adam(exponential_decay,epsilon=1e-8),
+              loss=tf.keras.losses.MSE,
               metrics=['mse','mae'])
-path = "./checkpoint/Baseline_zjumodel_mydata____/"
+path = "./checkpoint/Baseline_zjumodel_mydata_drop/"
 checkpoint_save_path = path + "Baseline.ckpt"
 model_save_path = path + "Baseline.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -149,10 +148,10 @@ if os.path.exists(checkpoint_save_path + '.index'):
 cp_callback = ([ tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_save_path,
                                                           save_weights_only=True,
                                                           save_best_only=True),
-                    tf.keras.callbacks.EarlyStopping(patience=2000, min_delta=1e-5)
+                    tf.keras.callbacks.EarlyStopping(patience=200, min_delta=1e-5)
                    ])
 
-history = model.fit(train, label, batch_size=1024, epochs=2000, validation_split=0.2, validation_freq=1,
+history = model.fit(train, epochs=2000, validation_data=val, validation_freq=1,
                     callbacks=[cp_callback])
 model.summary()
 model.save(model_save_path)
@@ -180,6 +179,7 @@ def plot_history(history):
   plt.plot(hist['epoch'], hist['val_mae'],
             label = 'Val Error')
   plt.legend()
+  plt.savefig(path + 'mae')
 
   plt.figure()
   plt.xlabel('Epoch')
@@ -189,6 +189,7 @@ def plot_history(history):
   plt.plot(hist['epoch'], hist['val_mse'],
             label = 'Val Error')
   plt.legend()
+  plt.savefig(path + 'mse')
   plt.show()
 
 

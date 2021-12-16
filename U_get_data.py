@@ -9,7 +9,7 @@ import tensorflow as tf
 import scipy.io as sc
 import os
 class Data_processing():
-    def __init__(self,size=[512,512,89],data_path='./balloons_ms/U_net/',num=20,name='hyper2'):
+    def __init__(self,size=[512,512,89],data_path='./balloons_ms/U_net/',num=1,name='hyper2'):
         self.data_path = data_path
         self.num = num
         self.size=size
@@ -24,6 +24,7 @@ class Data_processing():
         return self.train
     def creat_data_set(self):
         train = self.load_data()
+        train = train.astype('float32')
         train_examples = train[:int(self.num*0.6),:,:,:]
         train_labels = train_examples
         val_examples = train[int(self.num*0.6):int(self.num*0.9),:,:,:]

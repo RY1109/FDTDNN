@@ -9,7 +9,7 @@ import tensorflow as tf
 tf.compat.v1.enable_eager_execution()
 tf.autograph.experimental.do_not_convert
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import numpy as np
 from matplotlib import pyplot as plt
 from tensorflow.keras.layers import Dense, BatchNormalization, Activation ,LeakyReLU ,Dropout
@@ -44,7 +44,7 @@ def load_data(size):
 def Diy_loss(labels, predictions,P,
              delta=0.01,betar=1e-3):
     mse = tf.reduce_mean(tf.square(labels-predictions))
-    l = tf.constant(np.array([[0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2]]),dtype='float32')
+    l = tf.constant(np.array([[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]),dtype='float32')
     u = tf.constant(np.array([[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3]]),dtype='float32')
     regu = tf.maximum(tf.add(P, tf.add(-u, delta)), 
                       tf.maximum(tf.add(-P, tf.add(l, delta)),
@@ -119,6 +119,14 @@ class Zjubaseline(Model):
         self.d5 = Dropout(0.1)        
         self.b5 = BatchNormalization()  # BN层
         self.a5 = LeakyReLU()  # 激活层
+        self.c7 = Dense(800)  # 卷积层
+        self.d7= Dropout(0.1)        
+        self.b7 = BatchNormalization()  # BN层
+        self.a7 = LeakyReLU()  # 激活层
+        self.c8 = Dense(800)  # 卷积层
+        self.d8 = Dropout(0.1)        
+        self.b8 = BatchNormalization()  # BN层
+        self.a8 = LeakyReLU()  # 激活层
         self.c6 = Dense(100)  # 卷积层
         self.a6 = Activation('sigmoid')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
 
@@ -141,6 +149,14 @@ class Zjubaseline(Model):
         x = self.d5(x)
         x = self.b5(x)
         x = self.a5(x)
+        x = self.c7(x)
+        x = self.d7(x)
+        x = self.b7(x)
+        x = self.a7(x)
+        x = self.c8(x)
+        x = self.d8(x)
+        x = self.b8(x)
+        x = self.a8(x)
         x = self.c6(x)
         y = self.a6(x)
         return y
@@ -161,7 +177,7 @@ class MyModel(Model):
         self.model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001),
               loss='mse',
               metrics=['me','mae'])
-        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata_/Baseline.ckpt"
+        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata_10layers_8dense__0.001_300_0.2"
         self.model.load_weights(self.checkpoint_save_path)
         for layer in model.layers:
             layer.trainable = False
@@ -188,15 +204,21 @@ class ZjuModel(Model):
                           kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
         self.a1 = LeakyReLU(name='a1')  # 激活层
         self.d2 = Dense(500,
+                  kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
+        self.a2 = LeakyReLU(name='a1')  # 激活层
+        self.d3 = Dense(500,
+                  kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
+        self.a3 = LeakyReLU(name='a1')  # 激活层
+        self.d4 = Dense(500,
                           kernel_regularizer=tf.keras.regularizers.l2(0),name='d2')  # 卷积层
-        self.a2 = LeakyReLU(name='a2')  # 激活层
-        self.d3 = Dense(89,name='d3')  # 卷积层
-        self.a3 = LeakyReLU(name='a3')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
+        self.a4 = LeakyReLU(name='a2')  # 激活层
+        self.d5 = Dense(89,name='d3')  # 卷积层
+        self.a5 = LeakyReLU(name='a3')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
         self.model = Zjubaseline()
         self.model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001,decay=0.0001),
               loss='mse',
               metrics=['me','mae'])
-        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata/Baseline.ckpt"
+        self.checkpoint_save_path = "./checkpoint/Baseline_zjumodel_mydata_100_0.8/Baseline.ckpt"
         self.model.load_weights(self.checkpoint_save_path)
         for layer in self.model.layers:
             layer.trainable = False
@@ -209,14 +231,18 @@ class ZjuModel(Model):
         x = self.d1(x)
         x = self.a1(x)
         x = self.d2(x)
-        y = self.a2(x)
+        x = self.a2(x)
         x = self.d3(x)
-        y = self.a3(x)
+        x = self.a3(x)
+        x = self.d4(x)
+        x = self.a4(x)
+        x = self.d5(x)
+        y = self.a5(x)
         return y
 
-size = 10    
+size = 20
 model = ZjuModel()
-path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets_/"
+path = "./checkpoint/DNN_zjubaseline_zjumodel_16filter__/"
 checkpoint_save_path = path + "checkpoint.ckpt"
 model_save_path = path + "checkpoint.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -243,7 +269,7 @@ test_accuracy = tf.keras.metrics.MeanSquaredError(name='test_accuracy')
 @tf.function
 def train_step(tra):
   with tf.GradientTape() as tape:
-    predictions = model(tra)
+    predictions = model(tra,training=True)
     loss = Diy_loss(tra, predictions,model.P)
   gradients = tape.gradient(loss, model.trainable_variables)
   optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -259,7 +285,7 @@ def test_step(tes):
   test_loss(tes,predictions)
   test_accuracy(tes, predictions)
 
-EPOCHS = 500
+EPOCHS = 1
 ltr = len(train)
 lte = len(test)
 batch_size=2048
@@ -299,6 +325,11 @@ for epoch in range(EPOCHS):
   loss[3,epoch]=test_accuracy.result().numpy()
   
 model.summary()
+model.save_weights(checkpoint_save_path)  
+model.save(model_save_path) 
+test_input = model.P.numpy()
+sc.savemat(path+'para.mat',{'paraments':test_input})
+
 # print(model.trainable_variables)
 file = open(path+'weights.txt', 'w')
 for v in model.trainable_variables:
@@ -306,10 +337,6 @@ for v in model.trainable_variables:
     file.write(str(v.shape) + '\n')
     file.write(str(v.numpy()) + '\n')
 file.close()
-model.save_weights(checkpoint_save_path)  
-model.save(model_save_path) 
-test_input = model.P.numpy()
-sc.savemat(path+'para.mat',{'paraments':test_input})
 
 def plot_history(loss):
    

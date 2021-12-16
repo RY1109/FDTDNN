@@ -19,24 +19,24 @@ from tqdm import tqdm
 from mytmm import tmm_initial as tmmi
 from numpy import inf
 import scipy.io as sc
-def load_data(): 
-    import scipy.io as sc
-    import numpy as np
-    name = "./mytmm/data/test_10layers.mat"
-    data = sc.loadmat(name)
-    T = data['T']
-    d = data['d']*0.001
-    return [d,T]
-[train,label] = load_data()  
+# def load_data(): 
+#     import scipy.io as sc
+#     import numpy as np
+#     name = "./mytmm/data/test_10layers.mat"
+#     data = sc.loadmat(name)
+#     T = data['T']
+#     d = data['d']*0.001
+#     return [d,T]
+# [train,label] = load_data()  
 
-np.random.seed(116)
-np.random.shuffle(train)
-np.random.seed(116)
-np.random.shuffle(label)
+# np.random.seed(116)
+# np.random.shuffle(train)
+# np.random.seed(116)
+# np.random.shuffle(label)
 
-data_num = np.size(train,0)
-test_input=train[int(0.7*data_num):,:]
-test_label=label[int(0.7*data_num):,:]
+# data_num = np.size(train,0)
+# test_input=train[int(0.7*data_num):,:]
+# test_label=label[int(0.7*data_num):,:]
 
 
 class Baseline(Model):

@@ -39,27 +39,40 @@ def load_data(size):
 class ZjuModel(Model):
     def __init__(self):
         super(ZjuModel, self).__init__()
+        self.P = self.add_weight(
+            shape=(16, 10), initializer="random_normal", trainable=True,name='P'
+        )
         # self.a0 = LeakyReLU(name='a0')
         self.d1 = Dense(500,
                           kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
         self.a1 = LeakyReLU(name='a1')  # 激活层
         self.d2 = Dense(500,
+                  kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
+        self.a2 = LeakyReLU(name='a1')  # 激活层
+        self.d3 = Dense(500,
+                  kernel_regularizer=tf.keras.regularizers.l2(0),name='d1')  # 卷积层
+        self.a3 = LeakyReLU(name='a1')  # 激活层
+        self.d4 = Dense(500,
                           kernel_regularizer=tf.keras.regularizers.l2(0),name='d2')  # 卷积层
-        self.a2 = LeakyReLU(name='a2')  # 激活层
-        self.d3 = Dense(89,name='d3')  # 卷积层
-        self.a3 = LeakyReLU(name='a3')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
+        self.a4 = LeakyReLU(name='a2')  # 激活层
+        self.d5 = Dense(89,name='d3')  # 卷积层
+        self.a5 = LeakyReLU(name='a3')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
     def call(self, x):
         x = self.d1(x)
         x = self.a1(x)
         x = self.d2(x)
-        y = self.a2(x)
+        x = self.a2(x)
         x = self.d3(x)
-        y = self.a3(x)
+        x = self.a3(x)
+        x = self.d4(x)
+        x = self.a4(x)
+        x = self.d5(x)
+        y = self.a5(x)
         return y
 
 
 size = 10  
-path = "./checkpoint/DNN_zjubaseline_zjumodel_10datasets_/"
+path = "./checkpoint/DNN_zjubaseline_zjumodel_16filter__/"
 checkpoint_save_path = path + "checkpoint.ckpt"
 para = sc.loadmat(path+'para.mat')
 para = para['paraments']
@@ -96,7 +109,6 @@ for i in tqdm(ran):
     result_.plot(np.array(range(89)).reshape(89,1),predict[i,:],label='Pre')
     result_.plot(np.array(range(89)).reshape(89,1),val[i,:],label='True')
     result_.legend()
+    result_.set(title=str(np.sum(np.square(predict[i,:]-val[i,:]))/89))
     result_.imshow
     # result.savefig('./result/figure/ballons_DNN/'+str(i))
-
-

@@ -1,0 +1,19 @@
+U=rand(101,101);
+U=ones(101);
+R=zeros(101,101,2);
+m=0;
+for d=1:9999:10000
+    m=m+1;
+    x=[-0.5:1/100:0.5];
+    y=x;
+    [x,y]=meshgrid(x,y,101);
+    S=fftshift(fft2(U.*exp(i*(x.^2+y.^2)/d)));
+    Q=abs(S);
+    Q=Q/max(max(Q));
+    figure(d);
+    imshow(Q)
+    R(:,:,m)=Q;
+end
+s=R(:,:,1)-R(:,:,2);
+figure()
+imshow(s,[])

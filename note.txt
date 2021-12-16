@@ -1,0 +1,4 @@
+NN 			结构-响应网络
+DNN			光谱-光谱网络
+reconstruction		NN网络测试
+spectrum_reconstruction 	DNN网络测试
