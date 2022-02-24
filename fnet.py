@@ -32,12 +32,12 @@ if Material == 'TF':
     folder_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     path = 'torchnets/fnet/' + folder_name + '/'
 
-    data = scio.loadmat('mytmm/data/test_10layers.mat')
+    data = scio.loadmat('mytmm/data/test_30layers_mod.mat')
     Input_train = torch.tensor(data['d'][0:TrainingDataSize,:]*0.001, device=device_data, dtype=dtype)
     Output_train = torch.tensor(data['T'][0:TrainingDataSize,:], device=device_data, dtype=dtype)
-    Input_test = torch.tensor(data['d'][TrainingDataSize:,:]*0.001, device=device_test, dtype=dtype)
-    Output_test = torch.tensor(data['T'][TrainingDataSize:,:], device=device_test, dtype=dtype)
-    InputNum = 10
+    Input_test = torch.tensor(data['d'][TrainingDataSize:TrainingDataSize+TestingDataSize,:]*0.001, device=device_test, dtype=dtype)
+    Output_test = torch.tensor(data['T'][TrainingDataSize:TrainingDataSize+TestingDataSize,:], device=device_test, dtype=dtype)
+    InputNum = 30
     # StartWL = 400
     # EndWL = 701
     # Resolution = 2
