@@ -19,7 +19,7 @@ from tqdm import tqdm
 from mytmm import tmm_initial as tmmi
 from numpy import inf
 import scipy.io as sc
-# def load_data(): 
+# def load_data():
 #     import scipy.io as sc
 #     import numpy as np
 #     name = "./mytmm/data/test_10layers.mat"
@@ -27,17 +27,15 @@ import scipy.io as sc
 #     T = data['T']
 #     d = data['d']*0.001
 #     return [d,T]
-# [train,label] = load_data()  
 
-# np.random.seed(116)
-# np.random.shuffle(train)
-# np.random.seed(116)
-# np.random.shuffle(label)
-
-# data_num = np.size(train,0)
-# test_input=train[int(0.7*data_num):,:]
-# test_label=label[int(0.7*data_num):,:]
-
+def load_data():
+    import scipy.io as sc
+    import numpy as np
+    name = "./mytmm/data/data_TF_100-300nm"
+    data = sc.loadmat(name)
+    T = data['Trans_train'].T
+    d = data['Thick_train'].T*0.001
+    return [d,T]
 
 class Baseline(Model):
     def __init__(self):
@@ -68,29 +66,29 @@ class Baseline(Model):
         y = self.a2(x)
         return y
 
+
 class Zju(Model):
     def __init__(self):
-        
         super(Zju, self).__init__()
         self.c1 = Dense(200)  # 卷积层
-        self.b1 = BatchNormalization()  # BN层
-        self.a1 = LeakyReLU()  # 激活层
+        self.b1 = BatchNormalization(momentum=0.1, epsilon=1e-5)  # BN层
+        self.a1 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c2 = Dense(800)  # 卷积层
-        self.b2 = BatchNormalization()  # BN层
-        self.a2 = LeakyReLU()  # 激活层
+        self.b2 = BatchNormalization(momentum=0.1, epsilon=1e-5)  # BN层
+        self.a2 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c3 = Dense(800)  # 卷积层
         self.d3 = Dropout(0.1)
-        self.b3 = BatchNormalization()  # BN层
-        self.a3 = LeakyReLU()  # 激活层
+        self.b3 = BatchNormalization(momentum=0.1, epsilon=1e-5)  # BN层
+        self.a3 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c4 = Dense(800)  # 卷积层
         self.d4 = Dropout(0.1)
-        self.b4 = BatchNormalization()  # BN层
-        self.a4 = LeakyReLU()  # 激活层
+        self.b4 = BatchNormalization(momentum=0.1, epsilon=1e-5)  # BN层
+        self.a4 = LeakyReLU(alpha=1e-2)  # 激活层
         self.c5 = Dense(800)  # 卷积层
-        self.d5 = Dropout(0.1)        
-        self.b5 = BatchNormalization()  # BN层
-        self.a5 = LeakyReLU()  # 激活层
-        self.c6 = Dense(100)  # 卷积层
+        self.d5 = Dropout(0.1)
+        self.b5 = BatchNormalization(momentum=0.1, epsilon=1e-5)  # BN层
+        self.a5 = LeakyReLU(alpha=1e-2)  # 激活层
+        self.c6 = Dense(201)  # 卷积层
         self.a6 = Activation('sigmoid')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
 
     def call(self, x):
@@ -114,17 +112,22 @@ class Zju(Model):
         x = self.a5(x)
         x = self.c6(x)
         y = self.a6(x)
-        return y
+        return x
  
 
+[train,label] = load_data()
+
+np.random.seed(116)
+np.random.shuffle(train)
+np.random.seed(116)
+np.random.shuffle(label)
+
+data_num = np.size(train,0)
+test_input=train[int(0.7*data_num):,:]
+test_label=label[int(0.7*data_num):,:]
 
 model = Zju()
-
-model.compile(optimizer=tf.keras.optimizers.Adam(lr = 0.001),
-              loss='mse',
-              metrics=['mse','mae'])
-
-path = "./checkpoint/Baseline_zjumodel_mydata/"
+path = "./checkpoint/Baseline_zjumodel_mydata_drop/"
 checkpoint_save_path = path + "Baseline.ckpt"
 model_save_path = path + "Baseline.tf"
 
@@ -140,20 +143,17 @@ for i in tqdm(ran):
     inpu = test_input[i,:]*1000
     inpu = inpu.reshape(10,).tolist()
     d_list[1:11] = inpu
-    [lambda_list,T_list] = tmmi.sample2(d_list,1000)
+    [lambda_list,T_list,_] = tmmi.sample2(d_list,201)
     result = plt.figure() ##像素点光谱
     result_ = result.add_subplot(1,1,1)
-    result_.plot(lambda_list, T_list,label='tmm')
-    result_.plot(lambda_lis,predict[i,:],label='pre')
-    
+    result_.plot(lambda_list, test_label[i,:],label='tmm')
+    result_.plot(lambda_list,predict[i,:],label='pre')
     # a=sc.loadmat('T_test'+str(i+1))['T'][0,0]['T']
     # test_label=np.squeeze(a).reshape([100,1])
     # result_.plot(np.array(range(100)).reshape(100,1),test_label[i,:],label='true')
-    
-    
-    
     result_.legend()
     result_.imshow
+plt.show()
 #     result.savefig('./result/figure/filter16/'+str(i))
 #     sc.savemat('./result/data/filters16/'+str(i)+'.mat',{'tmm':T_list,'pre':predict[i,:]})
 # sc.savemat('./result/data/filters16/para.mat',{'paraments':test_input})

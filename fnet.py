@@ -22,7 +22,7 @@ if Material == 'TF':
     EpochNum = 2000
     TestInterval = 20
     BatchSize = 1000
-    lr = 1e-3
+    lr = 1e-4
     if IsParallel:
         BatchSize = BatchSize * torch.cuda.device_count()
         lr = lr * torch.cuda.device_count()
@@ -32,12 +32,12 @@ if Material == 'TF':
     folder_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     path = 'torchnets/fnet/' + folder_name + '/'
 
-    data = scio.loadmat('mytmm/data/test_30layers_mod.mat')
+    data = scio.loadmat('mytmm/data/test_10layers.mat')
     Input_train = torch.tensor(data['d'][0:TrainingDataSize,:]*0.001, device=device_data, dtype=dtype)
     Output_train = torch.tensor(data['T'][0:TrainingDataSize,:], device=device_data, dtype=dtype)
     Input_test = torch.tensor(data['d'][TrainingDataSize:TrainingDataSize+TestingDataSize,:]*0.001, device=device_test, dtype=dtype)
     Output_test = torch.tensor(data['T'][TrainingDataSize:TrainingDataSize+TestingDataSize,:], device=device_test, dtype=dtype)
-    InputNum = 30
+    InputNum = 10
     # StartWL = 400
     # EndWL = 701
     # Resolution = 2
@@ -58,7 +58,7 @@ else:
     TrainingDataSize = int(DataSize * TrainingDataRatio)
     TestingDataSize = DataSize - TrainingDataSize
     IsParallel = False
-    EpochNum = 1#2001
+    EpochNum = 2001
     TestInterval = 20
     BatchSize = 2000
     lr = 1e-3
@@ -90,7 +90,7 @@ else:
     assert WL.size == Output_train.shape[1]
 
     del data, Input_data, Output_data
-
+#文献结构
 fnet = nn.Sequential(
     nn.Linear(InputNum, 200),
     nn.BatchNorm1d(200),
@@ -114,6 +114,62 @@ fnet = nn.Sequential(
     # nn.Dropout(0.1),
     nn.Sigmoid()
 )
+#复杂结构
+# fnet = nn.Sequential(
+#     nn.Linear(InputNum, 600),
+#     nn.BatchNorm1d(600),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(600, 800),
+#     nn.BatchNorm1d(800),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(800, 1600),
+#     # nn.Dropout(0.1),
+#     nn.BatchNorm1d(1600),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(1600, 800),
+#     nn.Dropout(0.1),
+#     nn.BatchNorm1d(800),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(800, 800),
+#     # nn.Dropout(0.1),
+#     nn.BatchNorm1d(800),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(800, 800),
+#     # nn.Dropout(0.1),
+#     nn.BatchNorm1d(800),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(800, 800),
+#     # nn.Dropout(0.1),
+#     nn.BatchNorm1d(800),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(800, OutputNum),
+#     # nn.Dropout(0.1),
+#     nn.Sigmoid()
+# )
+#简化结构
+# fnet = nn.Sequential(
+#     nn.Linear(InputNum, 60),
+#     nn.BatchNorm1d(60),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(60, 80),
+#     nn.BatchNorm1d(80),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(80, 100),
+#     # nn.Dropout(0.1),
+#     nn.BatchNorm1d(100),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(100, 80),
+#     nn.Dropout(0.1),
+#     nn.BatchNorm1d(80),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(80, 80),
+#     # nn.Dropout(0.1),
+#     nn.BatchNorm1d(80),
+#     nn.LeakyReLU(inplace=True),
+#     nn.Linear(80, OutputNum),
+#     # nn.Dropout(0.1),
+#     nn.Sigmoid()
+# )
 if IsParallel:
     fnet = nn.DataParallel(fnet)
 fnet.to(device_train)

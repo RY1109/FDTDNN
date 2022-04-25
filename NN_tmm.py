@@ -29,16 +29,22 @@ def huber_loss(labels, predictions, delta=1.0):
     return tf.where(condition, small_res, large_res)
 
 
-
-
-def load_data(): 
+def load_data():
     import scipy.io as sc
-    import numpy as np
-    name = "./mytmm/data/data_TF_100-300nm"
+    name = "./mytmm/data/test_10layers.mat"
     data = sc.loadmat(name)
-    T = data['Trans_train'].T
-    d = data['Thick_train'].T*0.001
+    T = data['T']
+    d = data['d']*0.001
     return [d,T]
+
+# def load_data():
+#     import scipy.io as sc
+#     import numpy as np
+#     name = "./mytmm/data/data_TF_100-300nm"
+#     data = sc.loadmat(name)
+#     T = data['Trans_train'].T
+#     d = data['Thick_train'].T*0.001
+#     return [d,T]
 
 [train,label] = load_data()
 data_num = np.size(train,0)
@@ -105,7 +111,7 @@ class Zju(Model):
         self.d5 = Dropout(0.1)
         self.b5 = BatchNormalization(momentum=0.1,epsilon=1e-5)  # BN层
         self.a5 = LeakyReLU(alpha=1e-2)  # 激活层
-        self.c6 = Dense(201)  # 卷积层
+        self.c6 = Dense(100)  # 卷积层
         self.a6 = Activation('sigmoid')  # 激活层x_temp = data_all[0,0][mode + '_train'][:,0:x_len,0:T]
 
     def call(self, x):
@@ -138,7 +144,7 @@ exponential_decay = tf.keras.optimizers.schedules.ExponentialDecay(
 model.compile(optimizer=tf.keras.optimizers.Adam(exponential_decay,epsilon=1e-8),
               loss=tf.keras.losses.MSE,
               metrics=['mse','mae'])
-path = "./checkpoint/Baseline_zjumodel_mydata_drop/"
+path = "./checkpoint/Baseline_zjumodel_mydata_drop4/"
 checkpoint_save_path = path + "Baseline.ckpt"
 model_save_path = path + "Baseline.tf"
 if os.path.exists(checkpoint_save_path + '.index'):
@@ -148,7 +154,7 @@ if os.path.exists(checkpoint_save_path + '.index'):
 cp_callback = ([ tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_save_path,
                                                           save_weights_only=True,
                                                           save_best_only=True),
-                    tf.keras.callbacks.EarlyStopping(patience=200, min_delta=1e-5)
+                    tf.keras.callbacks.EarlyStopping(patience=2000, min_delta=1e-5)
                    ])
 
 history = model.fit(train, epochs=2000, validation_data=val, validation_freq=1,

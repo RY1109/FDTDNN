@@ -7,6 +7,9 @@ import numpy as np
 import math
 import time
 import os
+from numpy import inf
+from mytmm import tmm_initial as tmmi
+from tqdm import tqdm
 
 dtype = torch.float
 device_data = torch.device("cuda")
@@ -18,7 +21,7 @@ Material = 'Thin'
 TrainingDataSize = 300000
 TestingDataSize = 10000
 BatchSize = 2000
-EpochNum = 1000
+EpochNum = 100
 TestInterval = 10
 lr = 1e-4
 lr_decay_step = 100
@@ -65,13 +68,34 @@ np.random.seed(116)
 np.random.shuffle(test)
 Specs_train = torch.tensor(train, device=device_data, dtype=dtype)
 Specs_test  = torch.tensor(test, device=device_data, dtype=dtype)
-path = path = 'torchnets/hybnet/20220324_092346/'
-para = scio.loadmat(path+'TrainedParams.mat')
+path = path = 'torchnets/hybnet/20220324_094851/'
+para = scio.loadmat(path + 'TrainedParams.mat')
 # para = para['Params']
 thick = para['thick']
 theta = para['theta']
+para = np.matmul(theta.T, thick)
+d_list = [inf, 100, 200, 100, 200, 100, 200, 200, 200, 200, 200, inf]
+ran = np.array(range(TFNum))
+T_array = np.ones([TFNum, SpectralSliceNum])
+# T = sc.loadmat(path+'TargetCurves')['TargetCurves']
+for i in tqdm(ran):
+    lambda_lis = np.array(range(100)) * 4 + 400
+    inpu = para[i, :] * 1000
+    inpu = inpu.reshape(10, ).tolist()
+    d_list[1:11] = inpu
+    [lambda_list, T_list, _] = tmmi.sample2(d_list, 89)
+    # plt.plot(lambda_list,T_list)
+    # plt.plot(lambda_list,T[i,:])
+    # plt.show()
+    T_array[i, :] = np.array(T_list).reshape([1, 89])
+
+weights = torch.tensor(T_array, device=device_data, dtype=dtype)
+
 thick = torch.tensor(thick,device=device_data,dtype=dtype)
 theta = torch.tensor(theta,device=device_data,dtype=dtype)
+
+
+
 # path_data = './data/'
 # Specs_train = torch.zeros([TrainingDataSize, SpectralSliceNum], device=device_data, dtype=dtype)
 # Specs_test = torch.zeros([TestingDataSize, SpectralSliceNum], device=device_test, dtype=dtype)
@@ -92,7 +116,7 @@ theta = torch.tensor(theta,device=device_data,dtype=dtype)
 del train,test
 assert SpectralSliceNum == Specs_train.size(1)
 
-folder_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+folder_name = time.strftime("swnet"+"%Y%m%d_%H%M%S", time.localtime())
 path = './torchnets/hybnet/' + folder_name + '/'
 if Material == 'Meta':
     fnet_path = './torchnets/fnet/Meta/fnet.pkl'
@@ -120,7 +144,7 @@ for epoch in range(EpochNum):
     Specs_train = Specs_train[torch.randperm(TrainingDataSize), :]
     for i in range(0, TrainingDataSize // BatchSize):
         Specs_batch = Specs_train[i * BatchSize: i * BatchSize + BatchSize, :].to(device_train)
-        Output_pred = hybnet(Specs_batch,[])
+        Output_pred = hybnet(Specs_batch,weights)
         DesignParams = hybnet.show_design_params()
         loss = LossFcn(Specs_batch, Output_pred, DesignParams,
                        params_min.to(device_train), params_max.to(device_train),
@@ -129,13 +153,11 @@ for epoch in range(EpochNum):
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
         optimizer.step()
-        # hybnet.randpara()
     scheduler.step()
-
     if epoch % TestInterval == 0:
         hybnet.to(device_test)
         hybnet.eval()
-        Out_test_pred = hybnet(Specs_test,[])
+        Out_test_pred = hybnet(Specs_test,weights)
         hybnet.to(device_train)
         hybnet.train()
         hybnet.eval_fnet()
@@ -172,7 +194,6 @@ DesignParams = hybnet.show_design_params()
 thick = DesignParams[0].double().detach().cpu().numpy()
 theta = DesignParams[1].double().detach().cpu().numpy()
 print(DesignParams)
-a = hybnet.run_fnet(DesignParams)
 TargetCurves_FMN = hybnet.run_fnet(DesignParams).double().detach().cpu().numpy()[:,:89]
 scio.savemat(path + 'TargetCurves_FMN.mat', mdict={'TargetCurves_FMN': TargetCurves_FMN})
 # Params = DesignParams.double().detach().cpu().numpy()
@@ -186,20 +207,20 @@ for i in range(TFNum):
 plt.savefig(path + 'ROFcurves')
 plt.show()
 
-Output_train = hybnet(Specs_train[0, :].to(device_test).unsqueeze(0),[]).squeeze(0)
+Output_train = hybnet(Specs_train[100, :].to(device_test).unsqueeze(0),weights).squeeze(0)
 FigureTrainLoss = HybridNet.MatchLossFcn(Specs_train[100, :].to(device_test), Output_train)
 plt.figure()
-plt.plot(WL, Specs_train[0, :].cpu().numpy())
+plt.plot(WL, Specs_train[100, :].cpu().numpy())
 plt.plot(WL, Output_train.detach().cpu().numpy())
 plt.ylim(0, 1)
 plt.legend(['GT', 'pred'], loc='upper right')
 plt.savefig(path + 'train')
 plt.show()
 
-Output_test = hybnet(Specs_test[0, :].to(device_test).unsqueeze(0),[]).squeeze(0)
+Output_test = hybnet(Specs_test[100, :].to(device_test).unsqueeze(0),weights).squeeze(0)
 FigureTestLoss = HybridNet.MatchLossFcn(Specs_test[100, :].to(device_test), Output_test)
 plt.figure()
-plt.plot(WL, Specs_test[0, :].cpu().numpy())
+plt.plot(WL, Specs_test[100, :].cpu().numpy())
 plt.plot(WL, Output_test.detach().cpu().numpy())
 plt.ylim(0, 1)
 plt.legend(['GT', 'pred'], loc='upper right')

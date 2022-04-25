@@ -15,9 +15,11 @@ device = torch.device("cpu")
 
 TrainingDataSize = 1000000
 TestingDataSize = 100000
-SpectralSliceNum = 89#WL.size
+SpectralSliceNum = 89  # WL.size
 WL = np.array(range(SpectralSliceNum)) * 4 + 400
 numTF = 16
+
+
 # StartWL = 400
 # EndWL = 701
 # Resolution = 2
@@ -27,61 +29,61 @@ def load_data(size):
     import scipy.io as sc
     val_path = "./balloons_ms/val"
     val_name = os.listdir(val_path)
-    val = np.zeros([26215*size,89])
+    val = np.zeros([26215 * size, 89])
     for i in range(size):
-        data = sc.loadmat(val_path+'/'+val_name[i])
-        val[i*26215:(i+1)*26215,:] = data['val']
+        data = sc.loadmat(val_path + '/' + val_name[i])
+        val[i * 26215:(i + 1) * 26215, :] = data['val']
     # test = (test - np.min(test))/ (np.max(test)-np.min(test))
     return val
+
+
 path = 'torchnets/hybnet/TF3/'
 size = 2
-para = scio.loadmat(path+'TrainedParams.mat')
+para = scio.loadmat(path + 'TrainedParams.mat')
 # para = para['Params']
 thick = para['thick']
 theta = para['theta']
-para = np.matmul(theta.T,thick)
-d_list = [inf, 100,200,100,200,100,200, 200,200,200,200,inf]
+para = np.matmul(theta.T, thick)
+d_list = [inf, 100, 200, 100, 200, 100, 200, 200, 200, 200, 200, inf]
 ran = np.array(range(numTF))
-T_array = np.ones([numTF,SpectralSliceNum])
-val=load_data(size)
-T = sc.loadmat(path+'TargetCurves')['TargetCurves']
+T_array = np.ones([numTF, SpectralSliceNum])
+val = load_data(size)
+T = sc.loadmat(path + 'TargetCurves')['TargetCurves']
 for i in tqdm(ran):
-    lambda_lis  = np.array(range(100))*4+400
-    inpu = para[i,:]*1000
-    inpu = inpu.reshape(10,).tolist()
+    lambda_lis = np.array(range(100)) * 4 + 400
+    inpu = para[i, :] * 1000
+    inpu = inpu.reshape(10, ).tolist()
     d_list[1:11] = inpu
-    [lambda_list,T_list,_] = tmmi.sample2(d_list,89)
+    [lambda_list, T_list, _] = tmmi.sample2(d_list, 89)
     # plt.plot(lambda_list,T_list)
     # plt.plot(lambda_list,T[i,:])
     # plt.show()
-    T_array[i,:] = np.array(T_list).reshape([1,89])
+    T_array[i, :] = np.array(T_list).reshape([1, 89])
 
-T_array_noise = noise.add_noise(T_array,'white',[10])
+T_array_noise = noise.add_noise(T_array, 'white', [10])
 for i in tqdm(ran):
-    plt.plot(lambda_list,T_array[i,:])
-    plt.plot(lambda_list,T_array_noise[i,:])
+    plt.plot(lambda_list, T_array[i, :])
+    plt.plot(lambda_list, T_array_noise[i, :])
     plt.show()
 # print(T_array)
 
-specs_train  = torch.tensor(val, device=device, dtype=dtype)
+specs_train = torch.tensor(val, device=device, dtype=dtype)
 
 del val
 assert SpectralSliceNum == WL.size
 
 cmp = ['designed', 'noised']
 
-
 hybnet = torch.load(path + 'hybnet.pkl')
 hybnet.to(device)
 hybnet.eval()
-
 
 HWWeights_designed = torch.tensor(T_array, device=device, dtype=dtype)
 HWWeights_noised = torch.tensor(T_array_noise, device=device, dtype=dtype)
 TFNum = HWWeights_designed.size(0)
 TFCurves_designed = HWWeights_designed.cpu().numpy()
 
-output_train = hybnet(specs_train.to(device),[])
+output_train = hybnet(specs_train.to(device), [])
 loss_train = HybridNet.MatchLossFcn(specs_train.cpu(), output_train.cpu())
 output_train_designed = hybnet(specs_train.to(device), HWWeights_designed)
 loss_train_designed = HybridNet.MatchLossFcn(specs_train.cpu(), output_train_designed.cpu())
@@ -101,11 +103,10 @@ loss_train_noised = HybridNet.MatchLossFcn(specs_train.cpu(), output_train_noise
 # loss_test_noised = HybridNet.MatchLossFcn(specs_test.cpu(), output_test_noised.cpu())
 for i in tqdm(a):
     # plt.plot(WL,specs_train.detach().numpy()[i,:])
-    plt.plot(WL,output_train_noised.detach().numpy()[i,:])
-    plt.plot(WL,specs_train.detach().numpy()[i,:])
-    plt.plot(WL,output_train_designed.detach().numpy()[i,:])
+    plt.plot(WL, output_train_noised.detach().numpy()[i, :])
+    plt.plot(WL, specs_train.detach().numpy()[i, :])
+    plt.plot(WL, output_train_designed.detach().numpy()[i, :])
     plt.show()
-
 
 log_file = open(path + 'RunningLog.txt', 'w+')
 print('Running finished!')
@@ -113,8 +114,8 @@ print('| train loss using trained curves: %.5f' % loss_train.data.item(),
       '| train loss using designed curves: %.5f' % loss_train_designed.data.item(),
       '| train loss using noised curves: %.5f' % loss_train_noised.data.item())
 # print('| test loss using trained curves: %.5f' % loss_test.data.item(),
-      # '| test loss using designed curves: %.5f' % loss_test_designed.data.item(),
-      # '| test loss using noised curves: %.5f' % loss_test_noised.data.item())
+# '| test loss using designed curves: %.5f' % loss_test_designed.data.item(),
+# '| test loss using noised curves: %.5f' % loss_test_noised.data.item())
 print('Running finished!', file=log_file)
 print('| train loss using trained curves: %.5f' % loss_train.data.item(),
       '| train loss using designed curves: %.5f' % loss_train_designed.data.item(),
