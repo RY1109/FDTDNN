@@ -10,6 +10,7 @@ import os
 from numpy import inf
 from mytmm import tmm_initial as tmmi
 from tqdm import tqdm
+from
 
 dtype = torch.float
 device_data = torch.device("cuda")
